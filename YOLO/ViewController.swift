@@ -17,7 +17,7 @@ import CoreMedia
 import UIKit
 import Vision
 
-var mlModel = try! yolo11m(configuration: mlmodelConfig).model
+var mlModel = try! yolov8m(configuration: mlmodelConfig).model
 var mlmodelConfig: MLModelConfiguration = {
   let config = MLModelConfiguration()
 
@@ -31,7 +31,6 @@ var mlmodelConfig: MLModelConfiguration = {
 class ViewController: UIViewController {
   @IBOutlet var videoPreview: UIView!
   @IBOutlet var View0: UIView!
-  @IBOutlet var segmentedControl: UISegmentedControl!
   @IBOutlet var playButtonOutlet: UIBarButtonItem!
   @IBOutlet var pauseButtonOutlet: UIBarButtonItem!
   @IBOutlet var slider: UISlider!
@@ -67,11 +66,13 @@ class ViewController: UIViewController {
   var longSide: CGFloat = 3
   var shortSide: CGFloat = 4
   var frameSizeCaptured = false
+  var lastPixelBufferForSaving: CVPixelBuffer?
 
   // Developer mode
   let developerMode = UserDefaults.standard.bool(forKey: "developer_mode")  // developer mode selected in settings
   let save_detections = false  // write every detection to detections.txt
   let save_frames = false  // write every frame to frames.txt
+    
 
   lazy var visionRequest: VNCoreMLRequest = {
     let request = VNCoreMLRequest(
@@ -146,36 +147,9 @@ class ViewController: UIViewController {
     selection.selectionChanged()
   }
 
-  @IBAction func indexChanged(_ sender: Any) {
-    selection.selectionChanged()
-    activityIndicator.startAnimating()
-
-    /// Switch model
-    switch segmentedControl.selectedSegmentIndex {
-    case 0:
-      self.labelName.text = "YOLO11n"
-      mlModel = try! yolo11n(configuration: .init()).model
-    case 1:
-      self.labelName.text = "YOLO11s"
-      mlModel = try! yolo11s(configuration: .init()).model
-    case 2:
-      self.labelName.text = "YOLO11m"
-      mlModel = try! yolo11m(configuration: .init()).model
-    case 3:
-      self.labelName.text = "YOLO11l"
-      mlModel = try! yolo11l(configuration: .init()).model
-    case 4:
-      self.labelName.text = "YOLO11x"
-      mlModel = try! yolo11x(configuration: .init()).model
-    default:
-      break
-    }
-    setModel()
-    setUpBoundingBoxViews()
-    activityIndicator.stopAnimating()
-  }
-
   func setModel() {
+      
+    mlModel = try! yolov8m(configuration: mlmodelConfig).model
 
     /// VNCoreMLModel
     detector = try! VNCoreMLModel(for: mlModel)
@@ -372,6 +346,7 @@ class ViewController: UIViewController {
   func predict(sampleBuffer: CMSampleBuffer) {
     if currentBuffer == nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
       currentBuffer = pixelBuffer
+      self.lastPixelBufferForSaving = pixelBuffer
       if !frameSizeCaptured {
         let frameWidth = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
         let frameHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
@@ -419,6 +394,23 @@ class ViewController: UIViewController {
     DispatchQueue.main.async {
       if let results = request.results as? [VNRecognizedObjectObservation] {
         self.show(predictions: results)
+          
+          // Check for a specific class (e.g., "person")
+              let targetClass = "container"
+              let targetDetected = results.contains { observation in
+                  if let bestLabel = observation.labels.first?.identifier.lowercased() {
+                      return bestLabel == targetClass.lowercased()
+                  }
+                  return false
+              }
+              
+              // If the target class is detected and we have a saved pixel buffer, save the image.
+              if targetDetected, let pixelBuffer = self.lastPixelBufferForSaving,
+                 let image = self.imageFromPixelBuffer(pixelBuffer: pixelBuffer) {
+                  self.saveImage(image)
+                  // Optionally clear the saved pixel buffer so the same frame isn’t saved again.
+                  self.lastPixelBufferForSaving = nil
+              }
       } else {
         self.show(predictions: [])
       }
@@ -662,6 +654,30 @@ class ViewController: UIViewController {
     // print(UIDevice.current.identifierForVendor!)
     // saveImage()
   }
+    
+    func imageFromPixelBuffer(pixelBuffer: CVPixelBuffer) -> UIImage? {
+      let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+      let context = CIContext()
+      if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+        return UIImage(cgImage: cgImage)
+      }
+      return nil
+    }
+    
+    func saveImage(_ image: UIImage) {
+      if let data = image.jpegData(compressionQuality: 0.5),
+         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+        // Use a unique filename (for example, using a timestamp)
+        let fileName = "saved_\(Date().timeIntervalSince1970).jpg"
+        let fileURL = dir.appendingPathComponent(fileName)
+        do {
+          try data.write(to: fileURL)
+          print("Saved image to: \(fileURL)")
+        } catch {
+          print("Error saving image: \(error)")
+        }
+      }
+    }
 
   // Pinch to Zoom Start ---------------------------------------------------------------------------------------------
   let minimumZoom: CGFloat = 1.0

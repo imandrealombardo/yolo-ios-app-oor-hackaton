@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23094" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23084"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -23,7 +23,7 @@
                                 <gestureRecognizers/>
                                 <edgeInsets key="layoutMargins" top="8" left="0.0" bottom="0.0" right="0.0"/>
                             </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BZf-Ft-ERG" userLabel="LabelTime">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BZf-Ft-ERG" userLabel="LabelTime">
                                 <rect key="frame" x="175.66666666666666" y="132" width="42" height="20"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" staticText="YES" updatesFrequently="YES"/>
@@ -38,19 +38,6 @@
                                 <color key="textColor" systemColor="groupTableViewBackgroundColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
-                            <segmentedControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" apportionsSegmentWidthsByContent="YES" segmentControlStyle="plain" selectedSegmentIndex="2" springLoaded="YES" translatesAutoresizingMaskIntoConstraints="NO" id="9cm-Nq-b3N">
-                                <rect key="frame" x="19" y="102" width="355" height="32"/>
-                                <segments>
-                                    <segment title="YOLO11n" width="69"/>
-                                    <segment title="YOLO11s" width="69"/>
-                                    <segment title="YOLO11m" width="75"/>
-                                    <segment title="YOLO11l" width="69"/>
-                                    <segment title="YOLO11x" width="69"/>
-                                </segments>
-                                <connections>
-                                    <action selector="indexChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="3y2-Ij-sA7"/>
-                                </connections>
-                            </segmentedControl>
                             <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" hidesWhenStopped="YES" style="whiteLarge" translatesAutoresizingMaskIntoConstraints="NO" id="lOR-xu-27i">
                                 <rect key="frame" x="178" y="405" width="37" height="37"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
@@ -241,14 +228,11 @@
                         <gestureRecognizers/>
                         <constraints>
                             <constraint firstAttribute="bottom" secondItem="mCE-j4-QAA" secondAttribute="bottom" id="0zh-eM-EmE"/>
-                            <constraint firstItem="BZf-Ft-ERG" firstAttribute="top" secondItem="9cm-Nq-b3N" secondAttribute="bottom" constant="-1" id="10a-HD-y6c"/>
                             <constraint firstItem="mCE-j4-QAA" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="2Hf-C7-PKF"/>
                             <constraint firstItem="tZo-QP-q2z" firstAttribute="top" secondItem="Gax-hR-qdY" secondAttribute="bottom" constant="1" id="3qP-Re-vUy"/>
                             <constraint firstItem="Hif-Vv-5nn" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="4VU-KS-qnX"/>
                             <constraint firstItem="uD3-7n-e7T" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="6" id="8ED-Ty-itL"/>
                             <constraint firstItem="ewl-Fj-awn" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="5" id="CCH-hl-rSK"/>
-                            <constraint firstItem="9cm-Nq-b3N" firstAttribute="top" secondItem="Hif-Vv-5nn" secondAttribute="bottom" constant="9" id="CsQ-eU-xjO"/>
-                            <constraint firstItem="9cm-Nq-b3N" firstAttribute="centerX" secondItem="6Tk-OE-BBY" secondAttribute="centerX" id="DEd-UO-Mod"/>
                             <constraint firstAttribute="trailing" secondItem="q1Z-jK-UQS" secondAttribute="trailing" id="EpS-OI-uaC"/>
                             <constraint firstItem="Yhe-73-Ryr" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="6" id="GB3-HN-lcm"/>
                             <constraint firstItem="Krk-z8-jWR" firstAttribute="top" secondItem="Ovr-pp-CtB" secondAttribute="bottom" constant="1" id="Ned-gk-ai9"/>
@@ -312,7 +296,6 @@
                         <outlet property="labelZoom" destination="vlL-Ye-WgQ" id="OIv-03-1de"/>
                         <outlet property="pauseButtonOutlet" destination="Pes-is-qDX" id="uqc-gB-onZ"/>
                         <outlet property="playButtonOutlet" destination="gHs-cs-nVf" id="YgY-EV-fyY"/>
-                        <outlet property="segmentedControl" destination="9cm-Nq-b3N" id="RqH-Ft-fGI"/>
                         <outlet property="slider" destination="Ovr-pp-CtB" id="iHy-z4-EIQ"/>
                         <outlet property="sliderConf" destination="Gax-hR-qdY" id="KNe-MM-FBA"/>
                         <outlet property="sliderConfLandScape" destination="q4C-U4-wS4" id="UVy-LZ-5RX"/>
@@ -341,7 +324,7 @@
             <color red="0.94901960784313721" green="0.94901960784313721" blue="0.96862745098039216" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
         <systemColor name="systemGray5Color">
-            <color red="0.89803921568627454" green="0.89803921568627454" blue="0.91764705882352937" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.8980392157" green="0.8980392157" blue="0.91764705879999997" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

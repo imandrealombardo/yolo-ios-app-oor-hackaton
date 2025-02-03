@@ -127,6 +127,12 @@ public class VideoCapture: NSObject {
     }
     do {
       try captureDevice.lockForConfiguration()
+        
+      // Set frame rate to 2 fps (1 frame every 0.5 seconds)
+      let desiredFrameDuration = CMTime(value: 1, timescale: 2)
+      captureDevice.activeVideoMaxFrameDuration = desiredFrameDuration
+      captureDevice.activeVideoMinFrameDuration = desiredFrameDuration
+        
       captureDevice.focusMode = .continuousAutoFocus
       captureDevice.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
       captureDevice.exposureMode = .continuousAutoExposure
