@@ -407,7 +407,7 @@ class ViewController: UIViewController {
               // If the target class is detected and we have a saved pixel buffer, save the image.
               if targetDetected, let pixelBuffer = self.lastPixelBufferForSaving,
                  let image = self.imageFromPixelBuffer(pixelBuffer: pixelBuffer) {
-                  self.saveImage(image)
+                  self.saveDetection(image: image, predictions: results)
                   // Optionally clear the saved pixel buffer so the same frame isn’t saved again.
                   self.lastPixelBufferForSaving = nil
               }
@@ -678,6 +678,80 @@ class ViewController: UIViewController {
         }
       }
     }
+    
+  func saveDetection(image: UIImage, predictions: [VNRecognizedObjectObservation]) {
+      // Generate a filename using the current date/time.
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyyMMdd_HHmmssSSS"
+      let dateString = dateFormatter.string(from: Date())
+      let fileNameBase = "detection_\(dateString)"
+      
+      // Locate the "Detections" folder in the app’s Documents directory.
+      guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+          print("Could not locate Documents folder.")
+          return
+      }
+      let detectionsFolderURL = documentsURL.appendingPathComponent("Detections")
+      
+      // Ensure the "Detections" folder exists.
+      if !FileManager.default.fileExists(atPath: detectionsFolderURL.path) {
+          do {
+              try FileManager.default.createDirectory(at: detectionsFolderURL, withIntermediateDirectories: true, attributes: nil)
+              print("Created Detections folder at: \(detectionsFolderURL.path)")
+          } catch {
+              print("Error creating folder: \(error.localizedDescription)")
+              return
+          }
+      }
+      
+      // Save the image as a JPEG.
+      let imageURL = detectionsFolderURL.appendingPathComponent(fileNameBase + ".jpg")
+      if let imageData = image.jpegData(compressionQuality: 0.8) {
+          do {
+              try imageData.write(to: imageURL)
+              print("Saved image at \(imageURL)")
+          } catch {
+              print("Error saving image: \(error)")
+          }
+      }
+      
+      // Build the metadata for each prediction.
+      var predictionsMetadata = [[String: Any]]()
+      for prediction in predictions {
+          if let bestLabel = prediction.labels.first?.identifier {
+              let meta: [String: Any] = [
+                  "label": bestLabel,
+                  "confidence": prediction.labels.first?.confidence ?? 0,
+                  "boundingBox": [
+                      "x": prediction.boundingBox.origin.x,
+                      "y": prediction.boundingBox.origin.y,
+                      "width": prediction.boundingBox.size.width,
+                      "height": prediction.boundingBox.size.height
+                  ]
+              ]
+              predictionsMetadata.append(meta)
+          }
+      }
+      
+      // Create the metadata dictionary.
+      let metadata: [String: Any] = [
+          "timestamp": dateString,
+          "predictions": predictionsMetadata
+          // TO ADD: COORDINATE
+      ]
+      
+      // Save the metadata as a JSON file.
+      let metadataURL = detectionsFolderURL.appendingPathComponent(fileNameBase + ".json")
+      do {
+          let jsonData = try JSONSerialization.data(withJSONObject: metadata, options: .prettyPrinted)
+          try jsonData.write(to: metadataURL)
+          print("Saved metadata at \(metadataURL)")
+      } catch {
+          print("Error saving metadata: \(error)")
+      }
+  }
+
+
 
   // Pinch to Zoom Start ---------------------------------------------------------------------------------------------
   let minimumZoom: CGFloat = 1.0
