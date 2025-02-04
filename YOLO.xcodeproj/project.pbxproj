@@ -18,6 +18,7 @@
 		63CF37202514455300E2DEA1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6323C44F22186177008AE681 /* Main.storyboard */; };
 		63CF37212514455300E2DEA1 /* ultralytics_yolo_logotype.png in Resources */ = {isa = PBXBuildFile; fileRef = 6323C45122186177008AE681 /* ultralytics_yolo_logotype.png */; };
 		8EDAA33950796844333D60A7 /* BoundingBoxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EDAA633C1F2B50286D16008 /* BoundingBoxView.swift */; };
+		FB8DA3F12D510196008E7E75 /* yolov8m.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = FB8DA3F02D510196008E7E75 /* yolov8m.mlpackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		7BCB411721C3096100BFC4D0 /* YOLO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YOLO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EDAA633C1F2B50286D16008 /* BoundingBoxView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BoundingBoxView.swift; sourceTree = "<group>"; };
 		8EDAAA4507D2D23D7FAB827F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		FB8DA3F02D510196008E7E75 /* yolov8m.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = yolov8m.mlpackage; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +203,7 @@
 				636EFCAF21E62DD300DE43BC /* VideoCapture.swift in Sources */,
 				636166EA251443B20054FA7E /* ThresholdProvider.swift in Sources */,
 				636EFCB321E62DD300DE43BC /* AppDelegate.swift in Sources */,
+				FB8DA3F12D510196008E7E75 /* yolov8m.mlpackage in Sources */,
 				636EFCAA21E62DD300DE43BC /* ViewController.swift in Sources */,
 				5FFD0D8A2D510633004B3B4A /* yolov8m.mlpackage in Sources */,
 				8EDAA33950796844333D60A7 /* BoundingBoxView.swift in Sources */,
