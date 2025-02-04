@@ -49,6 +49,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 
+/// Not needed
+
 /// Extension to CALayer to add functionality for generating screenshots of any layer.
 extension CALayer {
   var screenShot: UIImage? {

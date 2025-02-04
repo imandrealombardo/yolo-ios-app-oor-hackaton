@@ -57,11 +57,6 @@ class ViewController: UIViewController {
   var videoCapture: VideoCapture!
   var currentBuffer: CVPixelBuffer?
   var framesDone = 0
-  var t0 = 0.0  // inference start
-  var t1 = 0.0  // inference dt
-  var t2 = 0.0  // inference dt smoothed
-  var t3 = CACurrentMediaTime()  // FPS start
-  var t4 = 0.0  // FPS dt smoothed
   // var cameraOutput: AVCapturePhotoOutput!
   var longSide: CGFloat = 3
   var shortSide: CGFloat = 4
@@ -88,8 +83,6 @@ class ViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    slider.value = 30
-    setLabels()
     setUpBoundingBoxViews()
     setUpOrientationChangeNotification()
     startVideo()
@@ -163,110 +156,13 @@ class ViewController: UIViewController {
       })
     request.imageCropAndScaleOption = .scaleFill  // .scaleFit, .scaleFill, .centerCrop
     visionRequest = request
-    t2 = 0.0  // inference dt smoothed
-    t3 = CACurrentMediaTime()  // FPS start
-    t4 = 0.0  // FPS dt smoothed
   }
 
   /// Update thresholds from slider values
   @IBAction func sliderChanged(_ sender: Any) {
     let conf = Double(round(100 * sliderConf.value)) / 100
     let iou = Double(round(100 * sliderIoU.value)) / 100
-    self.labelSliderConf.text = String(conf) + " Confidence Threshold"
-    self.labelSliderIoU.text = String(iou) + " IoU Threshold"
     detector.featureProvider = ThresholdProvider(iouThreshold: iou, confidenceThreshold: conf)
-  }
-
-  @IBAction func takePhoto(_ sender: Any?) {
-    let t0 = DispatchTime.now().uptimeNanoseconds
-
-    // 1. captureSession and cameraOutput
-    // session = videoCapture.captureSession  // session = AVCaptureSession()
-    // session.sessionPreset = AVCaptureSession.Preset.photo
-    // cameraOutput = AVCapturePhotoOutput()
-    // cameraOutput.isHighResolutionCaptureEnabled = true
-    // cameraOutput.isDualCameraDualPhotoDeliveryEnabled = true
-    // print("1 Done: ", Double(DispatchTime.now().uptimeNanoseconds - t0) / 1E9)
-
-    // 2. Settings
-    let settings = AVCapturePhotoSettings()
-    // settings.flashMode = .off
-    // settings.isHighResolutionPhotoEnabled = cameraOutput.isHighResolutionCaptureEnabled
-    // settings.isDualCameraDualPhotoDeliveryEnabled = self.videoCapture.cameraOutput.isDualCameraDualPhotoDeliveryEnabled
-
-    // 3. Capture Photo
-    usleep(20_000)  // short 10 ms delay to allow camera to focus
-    self.videoCapture.cameraOutput.capturePhoto(
-      with: settings, delegate: self as AVCapturePhotoCaptureDelegate)
-    print("3 Done: ", Double(DispatchTime.now().uptimeNanoseconds - t0) / 1E9)
-  }
-
-  @IBAction func logoButton(_ sender: Any) {
-    selection.selectionChanged()
-    if let link = URL(string: "https://www.ultralytics.com") {
-      UIApplication.shared.open(link)
-    }
-  }
-
-  func setLabels() {
-    self.labelName.text = "YOLO11m"
-    self.labelVersion.text = "Version " + UserDefaults.standard.string(forKey: "app_version")!
-  }
-
-  @IBAction func playButton(_ sender: Any) {
-    selection.selectionChanged()
-    self.videoCapture.start()
-    playButtonOutlet.isEnabled = false
-    pauseButtonOutlet.isEnabled = true
-  }
-
-  @IBAction func pauseButton(_ sender: Any?) {
-    selection.selectionChanged()
-    self.videoCapture.stop()
-    playButtonOutlet.isEnabled = true
-    pauseButtonOutlet.isEnabled = false
-  }
-
-  @IBAction func switchCameraTapped(_ sender: Any) {
-    self.videoCapture.captureSession.beginConfiguration()
-    let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
-    self.videoCapture.captureSession.removeInput(currentInput!)
-    guard let currentPosition = currentInput?.device.position else { return }
-
-    let nextCameraPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
-
-    let newCameraDevice = bestCaptureDevice(for: nextCameraPosition)
-
-    guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
-      return
-    }
-
-    self.videoCapture.captureSession.addInput(videoInput1)
-    self.videoCapture.updateVideoOrientation()
-
-    self.videoCapture.captureSession.commitConfiguration()
-
-  }
-
-  // share image
-  @IBAction func shareButton(_ sender: Any) {
-    selection.selectionChanged()
-    let settings = AVCapturePhotoSettings()
-    self.videoCapture.cameraOutput.capturePhoto(
-      with: settings, delegate: self as AVCapturePhotoCaptureDelegate)
-  }
-
-  // share screenshot
-  @IBAction func saveScreenshotButton(_ shouldSave: Bool = true) {
-    // let layer = UIApplication.shared.keyWindow!.layer
-    // let scale = UIScreen.main.scale
-    // UIGraphicsBeginImageContextWithOptions(layer.frame.size, false, scale);
-    // layer.render(in: UIGraphicsGetCurrentContext()!)
-    // let screenshot = UIGraphicsGetImageFromCurrentImageContext()
-    // UIGraphicsEndImageContext()
-
-    // let screenshot = UIApplication.shared.screenShot
-    // UIImageWriteToSavedPhotosAlbum(screenshot!, nil, nil, nil)
   }
 
   let maxBoundingBoxViews = 100
@@ -377,13 +273,11 @@ class ViewController: UIViewController {
       let handler = VNImageRequestHandler(
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
       if UIDevice.current.orientation != .faceUp {  // stop if placed down on a table
-        t0 = CACurrentMediaTime()  // inference start
         do {
           try handler.perform([visionRequest])
         } catch {
           print(error)
         }
-        t1 = CACurrentMediaTime() - t0  // inference dt
       }
 
       currentBuffer = nil
@@ -441,100 +335,9 @@ class ViewController: UIViewController {
                 self.lastPixelBufferForSaving = nil
               }
           }
-                   
-          
-          /*:
-          // Check for a specific class (e.g., "person")
-              let targetClass = "container"
-              let targetDetected = results.contains { observation in
-                  if let bestLabel = observation.labels.first?.identifier.lowercased() {
-                      return bestLabel == targetClass.lowercased()
-                  }
-                  return false
-              }
-              
-              // If the target class is detected and we have a saved pixel buffer, save the image.
-              if targetDetected, let pixelBuffer = self.lastPixelBufferForSaving,
-                 let image = self.imageFromPixelBuffer(pixelBuffer: pixelBuffer) {
-                  self.saveDetection(image: image, predictions: results)
-                  // Optionally clear the saved pixel buffer so the same frame isn’t saved again.
-                  self.lastPixelBufferForSaving = nil
-              }
-            */
       } else {
         self.show(predictions: [])
       }
-
-      // Measure FPS
-      if self.t1 < 10.0 {  // valid dt
-        self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-      }
-      self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-      self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", 1 / self.t4, self.t2 * 1000)  // t2 seconds to ms
-      self.t3 = CACurrentMediaTime()
-    }
-  }
-
-  // Save text file
-  func saveText(text: String, file: String = "saved.txt") {
-    if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-      let fileURL = dir.appendingPathComponent(file)
-
-      // Writing
-      do {  // Append to file if it exists
-        let fileHandle = try FileHandle(forWritingTo: fileURL)
-        fileHandle.seekToEndOfFile()
-        fileHandle.write(text.data(using: .utf8)!)
-        fileHandle.closeFile()
-      } catch {  // Create new file and write
-        do {
-          try text.write(to: fileURL, atomically: false, encoding: .utf8)
-        } catch {
-          print("no file written")
-        }
-      }
-
-      // Reading
-      // do {let text2 = try String(contentsOf: fileURL, encoding: .utf8)} catch {/* error handling here */}
-    }
-  }
-
-  // Save image file
-  func saveImage() {
-    let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-    let fileURL = dir!.appendingPathComponent("saved.jpg")
-    let image = UIImage(named: "ultralytics_yolo_logotype.png")
-    FileManager.default.createFile(
-      atPath: fileURL.path, contents: image!.jpegData(compressionQuality: 0.5), attributes: nil)
-  }
-
-  // Return hard drive space (GB)
-  func freeSpace() -> Double {
-    let fileURL = URL(fileURLWithPath: NSHomeDirectory() as String)
-    do {
-      let values = try fileURL.resourceValues(forKeys: [
-        .volumeAvailableCapacityForImportantUsageKey
-      ])
-      return Double(values.volumeAvailableCapacityForImportantUsage!) / 1E9  // Bytes to GB
-    } catch {
-      print("Error retrieving storage capacity: \(error.localizedDescription)")
-    }
-    return 0
-  }
-
-  // Return RAM usage (GB)
-  func memoryUsage() -> Double {
-    var taskInfo = mach_task_basic_info()
-    var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-    let kerr: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
-      $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-        task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-      }
-    }
-    if kerr == KERN_SUCCESS {
-      return Double(taskInfo.resident_size) / 1E9  // Bytes to GB
-    } else {
-      return 0
     }
   }
 
@@ -550,8 +353,6 @@ class ViewController: UIViewController {
     let sec_day =
       Double(hour) * 3600.0 + Double(minutes) * 60.0 + Double(seconds) + Double(nanoseconds) / 1E9  // seconds in the day
 
-    self.labelSlider.text =
-      String(predictions.count) + " items (max " + String(Int(slider.value)) + ")"
     let width = videoPreview.bounds.width  // 375 pix
     let height = videoPreview.bounds.height  // 812 pix
 
@@ -566,7 +367,7 @@ class ViewController: UIViewController {
       }
 
       for i in 0..<boundingBoxViews.count {
-        if i < predictions.count && i < Int(slider.value) {
+        if i < predictions.count {
           let prediction = predictions[i]
 
           var rect = prediction.boundingBox  // normalized xywh, origin lower left
@@ -624,16 +425,6 @@ class ViewController: UIViewController {
             label: label,
             color: colors[bestClass] ?? UIColor.white,
             alpha: alpha)  // alpha 0 (transparent) to 1 (opaque) for conf threshold 0.2 to 1.0)
-
-          if developerMode {
-            // Write
-            if save_detections {
-              str += String(
-                format: "%.3f %.3f %.3f %@ %.2f %.1f %.1f %.1f %.1f\n",
-                sec_day, freeSpace(), UIDevice.current.batteryLevel, bestClass, confidence,
-                rect.origin.x, rect.origin.y, rect.size.width, rect.size.height)
-            }
-          }
         } else {
           boundingBoxViews[i].hide()
         }
@@ -685,24 +476,6 @@ class ViewController: UIViewController {
         }
       }
     }
-    // Write
-    if developerMode {
-      if save_detections {
-        saveText(text: str, file: "detections.txt")  // Write stats for each detection
-      }
-      if save_frames {
-        str = String(
-          format: "%.3f %.3f %.3f %.3f %.1f %.1f %.1f\n",
-          sec_day, freeSpace(), memoryUsage(), UIDevice.current.batteryLevel,
-          self.t1 * 1000, self.t2 * 1000, 1 / self.t4)
-        saveText(text: str, file: "frames.txt")  // Write stats for each image
-      }
-    }
-
-    // Debug
-    // print(str)
-    // print(UIDevice.current.identifierForVendor!)
-    // saveImage()
   }
     
     func imageFromPixelBuffer(pixelBuffer: CVPixelBuffer) -> UIImage? {
@@ -713,21 +486,6 @@ class ViewController: UIViewController {
       }
       return nil
     }
-    
-//    func saveImage(_ image: UIImage) {
-//      if let data = image.jpegData(compressionQuality: 0.5),
-//         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-//        // Use a unique filename (for example, using a timestamp)
-//        let fileName = "saved_\(Date().timeIntervalSince1970).jpg"
-//        let fileURL = dir.appendingPathComponent(fileName)
-//        do {
-//          try data.write(to: fileURL)
-//          print("Saved image to: \(fileURL)")
-//        } catch {
-//          print("Error saving image: \(error)")
-//        }
-//      }
-//    }
   
   func saveDetection(image: UIImage, predictions: [VNRecognizedObjectObservation]) {
       // Generate a filename using the current date/time.
@@ -836,108 +594,10 @@ class ViewController: UIViewController {
       }
       return nil
   }
-
-  // Pinch to Zoom Start ---------------------------------------------------------------------------------------------
-  let minimumZoom: CGFloat = 1.0
-  let maximumZoom: CGFloat = 10.0
-  var lastZoomFactor: CGFloat = 1.0
-
-  @IBAction func pinch(_ pinch: UIPinchGestureRecognizer) {
-    let device = videoCapture.captureDevice
-
-    // Return zoom value between the minimum and maximum zoom values
-    func minMaxZoom(_ factor: CGFloat) -> CGFloat {
-      return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
-    }
-
-    func update(scale factor: CGFloat) {
-      do {
-        try device.lockForConfiguration()
-        defer {
-          device.unlockForConfiguration()
-        }
-        device.videoZoomFactor = factor
-      } catch {
-        print("\(error.localizedDescription)")
-      }
-    }
-
-    let newScaleFactor = minMaxZoom(pinch.scale * lastZoomFactor)
-    switch pinch.state {
-    case .began, .changed:
-      update(scale: newScaleFactor)
-      self.labelZoom.text = String(format: "%.2fx", newScaleFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .title2)
-    case .ended:
-      lastZoomFactor = minMaxZoom(newScaleFactor)
-      update(scale: lastZoomFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .body)
-    default: break
-    }
-  }  // Pinch to Zoom End --------------------------------------------------------------------------------------------
 }  // ViewController class End
 
 extension ViewController: VideoCaptureDelegate {
   func videoCapture(_ capture: VideoCapture, didCaptureVideoFrame sampleBuffer: CMSampleBuffer) {
     predict(sampleBuffer: sampleBuffer)
-  }
-}
-
-// Programmatically save image
-extension ViewController: AVCapturePhotoCaptureDelegate {
-  func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    if let error = error {
-      print("error occurred : \(error.localizedDescription)")
-    }
-    if let dataImage = photo.fileDataRepresentation() {
-      let dataProvider = CGDataProvider(data: dataImage as CFData)
-      let cgImageRef: CGImage! = CGImage(
-        jpegDataProviderSource: dataProvider!, decode: nil, shouldInterpolate: true,
-        intent: .defaultIntent)
-      var isCameraFront = false
-      if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
-        currentInput.device.position == .front
-      {
-        isCameraFront = true
-      }
-      var orientation: CGImagePropertyOrientation = isCameraFront ? .leftMirrored : .right
-      switch UIDevice.current.orientation {
-      case .landscapeLeft:
-        orientation = isCameraFront ? .downMirrored : .up
-      case .landscapeRight:
-        orientation = isCameraFront ? .upMirrored : .down
-      default:
-        break
-      }
-      var image = UIImage(cgImage: cgImageRef, scale: 0.5, orientation: .right)
-      if let orientedCIImage = CIImage(image: image)?.oriented(orientation),
-        let cgImage = CIContext().createCGImage(orientedCIImage, from: orientedCIImage.extent)
-      {
-        image = UIImage(cgImage: cgImage)
-      }
-      let imageView = UIImageView(image: image)
-      imageView.contentMode = .scaleAspectFill
-      imageView.frame = videoPreview.frame
-      let imageLayer = imageView.layer
-      videoPreview.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
-
-      let bounds = UIScreen.main.bounds
-      UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
-      self.View0.drawHierarchy(in: bounds, afterScreenUpdates: true)
-      let img = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-      imageLayer.removeFromSuperlayer()
-      let activityViewController = UIActivityViewController(
-        activityItems: [img!], applicationActivities: nil)
-      activityViewController.popoverPresentationController?.sourceView = self.View0
-      self.present(activityViewController, animated: true, completion: nil)
-      //
-      //            // Save to camera roll
-      //            UIImageWriteToSavedPhotosAlbum(img!, nil, nil, nil);
-    } else {
-      print("AVCapturePhotoCaptureDelegate Error")
-    }
   }
 }
