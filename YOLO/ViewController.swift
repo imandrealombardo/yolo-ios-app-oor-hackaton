@@ -395,6 +395,55 @@ class ViewController: UIViewController {
       if let results = request.results as? [VNRecognizedObjectObservation] {
         self.show(predictions: results)
           
+          // --- Step 1: Check if at least one "container" is detected.
+          let containerDetected = results.contains { observation in
+              if let label = observation.labels.first?.identifier.lowercased() {
+                  return label == "container"
+              }
+              return false
+          }
+          
+          // Only proceed if a container is detected.
+          if containerDetected {
+              // --- Step 2: Identify sensitive objects and collect their bounding boxes.
+              // Define your sensitive classes.
+              let sensitiveClasses: Set<String> = ["person", "license plate"]
+              var sensitiveBoxes = [CGRect]()
+              
+              // For each observation that is sensitive, convert its normalized bounding box to image coordinates.
+              // (Assume 'image' is created from your saved pixel buffer.)
+              if let pixelBuffer = self.lastPixelBufferForSaving,
+                 let image = self.imageFromPixelBuffer(pixelBuffer: pixelBuffer) {
+                  
+                  let imageSize = image.size
+                  for observation in results {
+                      if let label = observation.labels.first?.identifier.lowercased(),
+                         sensitiveClasses.contains(label) {
+                          let normRect = observation.boundingBox
+                          // VNImageRectForNormalizedRect converts a normalized rect (origin bottom-left)
+                          // into pixel coordinates (origin top-left) given the image width and height.
+                          let rectInImage = VNImageRectForNormalizedRect(normRect, Int(imageSize.width), Int(imageSize.height))
+                          sensitiveBoxes.append(rectInImage)
+                      }
+                  }
+                  
+                  // --- Step 3: Blur the sensitive regions.
+                  if !sensitiveBoxes.isEmpty, let blurredImage = self.blurSensitiveAreas(in: image, boxes: sensitiveBoxes, blurRadius: 10) {
+                      // Save the blurred image (using your custom saveDetetction(_:) method).
+                      self.saveDetection(image: blurredImage, predictions: results)
+//                      // Optionally clear the pixel buffer so this frame isn’t saved again.
+//                      self.lastPixelBufferForSaving = nil
+                  }
+                else {
+                  self.saveDetection(image: image, predictions: results)
+                }
+                // Optionally clear the pixel buffer so this frame isn’t saved again.
+                self.lastPixelBufferForSaving = nil
+              }
+          }
+                   
+          
+          /*:
           // Check for a specific class (e.g., "person")
               let targetClass = "container"
               let targetDetected = results.contains { observation in
@@ -407,10 +456,11 @@ class ViewController: UIViewController {
               // If the target class is detected and we have a saved pixel buffer, save the image.
               if targetDetected, let pixelBuffer = self.lastPixelBufferForSaving,
                  let image = self.imageFromPixelBuffer(pixelBuffer: pixelBuffer) {
-                  self.saveImage(image)
+                  self.saveDetection(image: image, predictions: results)
                   // Optionally clear the saved pixel buffer so the same frame isn’t saved again.
                   self.lastPixelBufferForSaving = nil
               }
+            */
       } else {
         self.show(predictions: [])
       }
@@ -664,20 +714,128 @@ class ViewController: UIViewController {
       return nil
     }
     
-    func saveImage(_ image: UIImage) {
-      if let data = image.jpegData(compressionQuality: 0.5),
-         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-        // Use a unique filename (for example, using a timestamp)
-        let fileName = "saved_\(Date().timeIntervalSince1970).jpg"
-        let fileURL = dir.appendingPathComponent(fileName)
-        do {
-          try data.write(to: fileURL)
-          print("Saved image to: \(fileURL)")
-        } catch {
-          print("Error saving image: \(error)")
-        }
+//    func saveImage(_ image: UIImage) {
+//      if let data = image.jpegData(compressionQuality: 0.5),
+//         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+//        // Use a unique filename (for example, using a timestamp)
+//        let fileName = "saved_\(Date().timeIntervalSince1970).jpg"
+//        let fileURL = dir.appendingPathComponent(fileName)
+//        do {
+//          try data.write(to: fileURL)
+//          print("Saved image to: \(fileURL)")
+//        } catch {
+//          print("Error saving image: \(error)")
+//        }
+//      }
+//    }
+  
+  func saveDetection(image: UIImage, predictions: [VNRecognizedObjectObservation]) {
+      // Generate a filename using the current date/time.
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "yyyyMMdd_HHmmssSSS"
+      let dateString = dateFormatter.string(from: Date())
+      let fileNameBase = "detection_\(dateString)"
+      
+      // Locate the "Detections" folder in the app’s Documents directory.
+      guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+          print("Could not locate Documents folder.")
+          return
       }
-    }
+      let detectionsFolderURL = documentsURL.appendingPathComponent("Detections")
+      
+      // Ensure the "Detections" folder exists.
+      if !FileManager.default.fileExists(atPath: detectionsFolderURL.path) {
+          do {
+              try FileManager.default.createDirectory(at: detectionsFolderURL, withIntermediateDirectories: true, attributes: nil)
+              print("Created Detections folder at: \(detectionsFolderURL.path)")
+          } catch {
+              print("Error creating folder: \(error.localizedDescription)")
+              return
+          }
+      }
+      
+      // Save the image as a JPEG.
+      let imageURL = detectionsFolderURL.appendingPathComponent(fileNameBase + ".jpg")
+      if let imageData = image.jpegData(compressionQuality: 0.5) {
+          do {
+              try imageData.write(to: imageURL)
+              print("Saved image at \(imageURL)")
+          } catch {
+              print("Error saving image: \(error)")
+          }
+      }
+      
+      // Build the metadata for each prediction.
+      var predictionsMetadata = [[String: Any]]()
+      for prediction in predictions {
+          if let bestLabel = prediction.labels.first?.identifier {
+              let meta: [String: Any] = [
+                  "label": bestLabel,
+                  "confidence": prediction.labels.first?.confidence ?? 0,
+                  "boundingBox": [
+                      "x": prediction.boundingBox.origin.x,
+                      "y": prediction.boundingBox.origin.y,
+                      "width": prediction.boundingBox.size.width,
+                      "height": prediction.boundingBox.size.height
+                  ]
+              ]
+              predictionsMetadata.append(meta)
+          }
+      }
+      
+      // Create the metadata dictionary.
+      let metadata: [String: Any] = [
+          "timestamp": dateString,
+          "predictions": predictionsMetadata
+          // TO ADD: COORDINATE
+      ]
+      
+      // Save the metadata as a JSON file.
+      let metadataURL = detectionsFolderURL.appendingPathComponent(fileNameBase + ".json")
+      do {
+          let jsonData = try JSONSerialization.data(withJSONObject: metadata, options: .prettyPrinted)
+          try jsonData.write(to: metadataURL)
+          print("Saved metadata at \(metadataURL)")
+      } catch {
+          print("Error saving metadata: \(error)")
+      }
+  }
+  
+  func blurSensitiveAreas(in image: UIImage, boxes: [CGRect], blurRadius: Double = 20) -> UIImage? {
+      // Convert the UIImage to a CIImage.
+      guard let ciImage = CIImage(image: image) else { return nil }
+      var outputImage = ciImage
+      let context = CIContext(options: nil)
+      
+      for box in boxes {
+          // Crop the region to blur.
+          let cropped = outputImage.cropped(to: box)
+          
+          // Apply a Gaussian blur filter to the cropped area.
+          if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+              blurFilter.setValue(cropped, forKey: kCIInputImageKey)
+              blurFilter.setValue(blurRadius, forKey: kCIInputRadiusKey)
+              guard let blurredCropped = blurFilter.outputImage else { continue }
+              // The blur filter may expand the image extent; crop back to the original box.
+              let blurredRegion = blurredCropped.cropped(to: box)
+              
+              // Composite the blurred region over the current output image.
+              if let compositeFilter = CIFilter(name: "CISourceOverCompositing") {
+                  compositeFilter.setValue(blurredRegion, forKey: kCIInputImageKey)
+                  compositeFilter.setValue(outputImage, forKey: kCIInputBackgroundImageKey)
+                  if let composited = compositeFilter.outputImage {
+                      outputImage = composited
+                  }
+              }
+          }
+      }
+      
+      // Render the final composited image.
+      if let cgImage = context.createCGImage(outputImage, from: outputImage.extent) {
+          return UIImage(cgImage: cgImage)
+      }
+      return nil
+  }
 
   // Pinch to Zoom Start ---------------------------------------------------------------------------------------------
   let minimumZoom: CGFloat = 1.0
